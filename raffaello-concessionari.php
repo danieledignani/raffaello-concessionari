@@ -4,7 +4,7 @@ use YOOtheme\Application;
  * Plugin Name: Raffaello Concessionari Add-On
  * Plugin URI: https://raffaelloscuola.it
  * Description: Gestione dei concessionari e classi di sconto.
- * Version: 2.1
+ * Version: 5.0
  */
 
 // Impedisce l'accesso diretto ai file del plugin
@@ -35,7 +35,8 @@ class ConcessionariPlugin {
     private function include_files() {
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/rest-api.php';
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/logger.php';
-        include_once CONCESSIONARI_PLUGIN_DIR . 'includes/classi-sconto.php'; // Includi il nuovo file
+        include_once CONCESSIONARI_PLUGIN_DIR . 'includes/province-handler.php';
+        include_once CONCESSIONARI_PLUGIN_DIR . 'includes/archive-filter.php';
     }
 
     private function init_hooks() {
