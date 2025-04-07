@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisci le costanti per il plugin
-define('CONCESSIONARI_PLUGIN_VERSION', '2.1');
+define('CONCESSIONARI_PLUGIN_VERSION', '5.0');
 define('CONCESSIONARI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CONCESSIONARI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -70,3 +70,14 @@ class ConcessionariPlugin {
 add_action('plugins_loaded', function() {
     ConcessionariPlugin::instance();
 });
+
+// Auto-update via Plugin Update Checker
+require_once __DIR__ . '/vendor/plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$updateChecker = PucFactory::buildUpdateChecker(
+    'https://raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json',
+    __FILE__,
+    'raffaello-concessionari'
+);
