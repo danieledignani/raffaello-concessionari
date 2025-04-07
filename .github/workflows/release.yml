@@ -1,0 +1,34 @@
+name: Build and release plugin
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build and release plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create plugin zip
+        run: |
+          PLUGIN_SLUG="raffaello-concessionari"
+          ZIP_NAME="${PLUGIN_SLUG}.zip"
+          mkdir dist
+          # Esclude .git e directory inutili
+          zip -r "dist/$ZIP_NAME" . -x "*.git*" "*.github*" "vendor/*" "node_modules/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: dist/raffaello-concessionari.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
