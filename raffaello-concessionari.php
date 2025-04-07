@@ -4,7 +4,7 @@ use YOOtheme\Application;
  * Plugin Name: Raffaello Concessionari
  * Plugin URI: https://raffaelloscuola.it
  * Description: Gestione dei concessionari e classi di sconto.
- * Version: 5.5
+ * Version: 5.5.1
  */
 
 // Impedisce l'accesso diretto ai file del plugin
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisci le costanti per il plugin
-define('CONCESSIONARI_PLUGIN_VERSION', '5.0');
+define('CONCESSIONARI_PLUGIN_VERSION', '5.5.1');
 define('CONCESSIONARI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CONCESSIONARI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
