@@ -82,9 +82,12 @@ $updateChecker = PucFactory::buildUpdateChecker(
     'raffaello-concessionari'
 );
 
-$github_token = get_field('github_token', 'option');
-
-if ($github_token) {
-    $updateChecker->setAuthentication($github_token);
-}
-
+// Sposta l'autenticazione dopo che ACF è sicuramente caricato
+add_action('init', function () use ($updateChecker) {
+    if (function_exists('get_field')) {
+        $github_token = get_field('github_token', 'option');
+        if (!empty($github_token)) {
+            $updateChecker->setAuthentication($github_token);
+        }
+    }
+});
