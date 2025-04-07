@@ -71,10 +71,10 @@ jobs:
           }
           EOF
 
-      - name: Commit and push JSON
+      - name: Commit updated JSON
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add update.json
-          git commit -m "Aggiorna update.json alla versione $VERSION"
-          git push origin HEAD:main
+          git add .github/update-metadata/raffaello-concessionari.json
+          git commit -m "Aggiorna update.json alla versione ${{ github.ref_name }}"
+          git push origin HEAD:refs/heads/main
