@@ -72,7 +72,7 @@ add_action('plugins_loaded', function() {
 });
 
 // Auto-update via Plugin Update Checker
-require_once __DIR__ . '/vendor/plugin-update-checker/plugin-update-checker.php';
+require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
