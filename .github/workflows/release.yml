@@ -49,28 +49,8 @@ jobs:
 
       - name: Update JSON version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-          mkdir -p .github/update-metadata
-          cat <<EOF > .github/update-metadata/raffaello-concessionari.json
-          {
-            "name": "Raffaello Concessionari Add-On",
-            "version": "$VERSION",
-            "download_url": "https://github.com/danieledignani/raffaello-concessionari/releases/download/$VERSION/raffaello-concessionari.zip",
-            "homepage": "https://raffaelloscuola.it",
-            "requires": "5.0",
-            "tested": "6.5",
-            "last_updated": "$TIMESTAMP",
-            "upgrade_notice": "Aggiornamento automatico da GitHub",
-            "author": "Daniele Dignani",
-            "author_homepage": "https://github.com/danieledignani",
-            "sections": {
-              "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
-              "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
-              "changelog": "<ul><li>Auto aggiornamento attivo</li></ul>"
-            }
-          }
-          EOF
+          VERSION=${GITHUB_REF#refs/tags/}; TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S"); mkdir -p .github/update-metadata; echo "{\"name\": \"Raffaello Concessionari Add-On\", \"version\": \"$VERSION\", \"download_url\": \"https://github.com/danieledignani/raffaello-concessionari/releases/download/$VERSION/raffaello-concessionari.zip\", \"homepage\": \"https://raffaelloscuola.it\", \"requires\": \"5.0\", \"tested\": \"6.5\", \"last_updated\": \"$TIMESTAMP\", \"upgrade_notice\": \"Aggiornamento automatico da GitHub\", \"author\": \"Daniele Dignani\", \"author_homepage\": \"https://github.com/danieledignani\", \"sections\": {\"description\": \"Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.\", \"installation\": \"Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/\", \"changelog\": \"<ul><li>Auto aggiornamento attivo</li></ul>\"}}" > .github/update-metadata/raffaello-concessionari.json
+      
 
       - name: Checkout repository
         uses: actions/checkout@v3
