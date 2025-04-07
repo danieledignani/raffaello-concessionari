@@ -4,7 +4,7 @@ use YOOtheme\Application;
  * Plugin Name: Raffaello Concessionari
  * Plugin URI: https://raffaelloscuola.it
  * Description: Gestione dei concessionari e classi di sconto.
- * Version: 5.5.2
+ * Version: 5.5.3
  */
 
 // Impedisce l'accesso diretto ai file del plugin
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisci le costanti per il plugin
-define('CONCESSIONARI_PLUGIN_VERSION', '5.5.2');
+define('CONCESSIONARI_PLUGIN_VERSION', '5.5.3');
 define('CONCESSIONARI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CONCESSIONARI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -71,21 +71,14 @@ add_action('plugins_loaded', function() {
     ConcessionariPlugin::instance();
 });
 
+// Auto-update via Plugin Update Checker
 require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 
-use YahnisElsts\PluginUpdateChecker\v5p5\PucFactory;
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $updateChecker = PucFactory::buildUpdateChecker(
+    'https://raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json',
     __FILE__,
     'raffaello-concessionari'
 );
 
-$repo = $updateChecker->setVcsRepository('https://github.com/danieledignani/raffaello-concessionari');
-
-// Recupero del token GitHub da ACF o opzioni
-add_action('init', function () use ($repo) {
-    $token = get_field('github_token', 'option'); // oppure get_option('github_token')
-    if (!empty($token)) {
-        $repo->setAuthentication($token);
-    }
-});
