@@ -1,7 +1,7 @@
 <?php
 use YOOtheme\Application;
 /**
- * Plugin Name: Raffaello Concessionari Add-On
+ * Plugin Name: Raffaello Concessionari
  * Plugin URI: https://raffaelloscuola.it
  * Description: Gestione dei concessionari e classi di sconto.
  * Version: 5.0
