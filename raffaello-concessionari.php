@@ -81,3 +81,10 @@ $updateChecker = PucFactory::buildUpdateChecker(
     __FILE__,
     'raffaello-concessionari'
 );
+
+$github_token = get_field('github_token', 'option');
+
+if ($github_token) {
+    $updateChecker->setAuthentication($github_token);
+}
+
