@@ -47,7 +47,13 @@ function rc_get_province_obj(){
     wc_get_logger()->info('Start creating provinces', $logger_array);
 
     // URL del CSV con l'elenco delle province italiane corretto
-    $csv_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTIATF8d26_XAAPaMQn2_tjhyv4p_QEbzHAJ1UK319yYiyzqfR1RxuWuRx_OVjtqDBKNYIEUgGI_R3_/pub?output=csv';
+    // recuperaa dalle opzioni di wordpress
+    $csv_url = get_option('options_csv_province');
+    if (empty($csv_url)) { //notifica su utente wordpress su admin se l'url è vuoto
+        wc_add_notice(__('URL CSV province non trovato nelle opzioni di WordPress', 'raffaello-concessionari'), 'error');
+        wc_get_logger()->error('URL CSV province non trovato nelle opzioni di WordPress', $logger_array);
+        return;
+    }
     $response = wp_remote_get($csv_url);
 
     if (is_wp_error($response)) {

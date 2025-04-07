@@ -4,7 +4,7 @@ use YOOtheme\Application;
  * Plugin Name: Raffaello Concessionari
  * Plugin URI: https://raffaelloscuola.it
  * Description: Gestione dei concessionari e classi di sconto.
- * Version: 5.5.3
+ * Version: 0.0.0
  */
 
 // Impedisce l'accesso diretto ai file del plugin
@@ -13,7 +13,6 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisci le costanti per il plugin
-define('CONCESSIONARI_PLUGIN_VERSION', '5.5.3');
 define('CONCESSIONARI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CONCESSIONARI_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -77,7 +76,8 @@ require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $updateChecker = PucFactory::buildUpdateChecker(
-    'https://raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json',
+    'https://raw.githubusercontent.com/danieledignani/raffaello-concessionari/main/.github/update-metadata/raffaello-concessionari.json
+',
     __FILE__,
     'raffaello-concessionari'
 );
