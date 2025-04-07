@@ -1,0 +1,80 @@
+name: Build and release plugin
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build and release plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create plugin zip
+        run: |
+          PLUGIN_SLUG="raffaello-concessionari"
+          ZIP_NAME="${PLUGIN_SLUG}.zip"
+          mkdir dist
+          # Esclude .git e directory inutili
+          zip -r "dist/$ZIP_NAME" . -x "*.git*" "*.github*" "vendor/*" "node_modules/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: dist/raffaello-concessionari.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-json:
+    name: Update JSON metadata
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout JSON repo
+        uses: actions/checkout@v3
+        with:
+          repository: danieledignani/Raffaello-concessionari-json
+          token: ${{ secrets.RAFFAELLO_CONCESSIONARI_SECRET }}
+          path: json-repo
+
+      - name: Update version in JSON
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+          cat > json-repo/raffaello-concessionari.json <<EOF
+{
+  "name": "Raffaello Concessionari Add-On",
+  "version": "$VERSION",
+  "download_url": "https://github.com/danieledignani/raffaello-concessionari/releases/download/$VERSION/raffaello-concessionari.zip",
+  "homepage": "https://raffaelloscuola.it",
+  "requires": "5.0",
+  "tested": "6.5",
+  "last_updated": "$TIMESTAMP",
+  "upgrade_notice": "Aggiornamento automatico da GitHub",
+  "author": "Daniele Dignani",
+  "author_homepage": "https://github.com/danieledignani",
+  "sections": {
+    "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
+    "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
+    "changelog": "<ul><li>Auto aggiornamento attivo</li></ul>"
+  }
+}
+EOF
+
+      - name: Commit updated JSON
+        run: |
+          cd json-repo
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add raffaello-concessionari.json
+          git commit -m "Update JSON to version $VERSION"
+          git push
