@@ -75,19 +75,19 @@ add_action('plugins_loaded', function() {
 require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+// Recupera il token dalle opzioni di WordPress (non serve ACF!)
+$github_token = get_option('options_github_token');
+
+// Se c'è il token, costruisci l'URL autenticato
+if (!empty($github_token)) {
+    $auth_url = 'https://x-access-token:' . $github_token . '@raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json';
+} else {
+    // Se manca, fallback alla versione pubblica (inutile se il repo è privato)
+    $auth_url = 'https://raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json';
+}
 
 $updateChecker = PucFactory::buildUpdateChecker(
-    'https://raw.githubusercontent.com/danieledignani/Raffaello-concessionari-json/main/raffaello-concessionari.json',
+    $auth_url,
     __FILE__,
     'raffaello-concessionari'
 );
-
-// Sposta l'autenticazione dopo che ACF è sicuramente caricato
-add_action('init', function () use ($updateChecker) {
-    if (function_exists('get_field')) {
-        $github_token = get_field('github_token', 'option');
-        if (!empty($github_token)) {
-            $updateChecker->setAuthentication($github_token);
-        }
-    }
-});
