@@ -60,9 +60,9 @@ jobs:
           echo "Previous tag: $PREV_TAG"
 
           if [ -n "$PREV_TAG" ]; then
-            CHANGELOG=$(git log "$PREV_TAG..HEAD" --pretty=format:"<li>%s</li>")
+            CHANGELOG=$(git log "$PREV_TAG..HEAD" --pretty=format:"<li>%s</li>" | jq -Rs .)
           else
-            CHANGELOG="<li>Versione iniziale</li>"
+            CHANGELOG=$(echo "<li>Versione iniziale</li>" | jq -Rs .)
           fi
 
           cat <<EOF > $JSON_PATH
@@ -80,11 +80,11 @@ jobs:
             "sections": {
               "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
               "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
-              "changelog": "<ul>$CHANGELOG</ul>"
+              "changelog": $CHANGELOG
             }
           }
           EOF
-
+  
       - name: Commit updated JSON
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
