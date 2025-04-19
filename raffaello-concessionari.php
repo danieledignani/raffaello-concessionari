@@ -76,7 +76,7 @@ require_once __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $updateChecker = PucFactory::buildUpdateChecker(
-    'https://raw.githubusercontent.com/danieledignani/raffaello-concessionari/main/.github/update-metadata/raffaello-concessionari.json
+    'https://raw.githubusercontent.com/danieledignani/raffaello-concessionari/master/.github/update-metadata/raffaello-concessionari.json
 ',
     __FILE__,
     'raffaello-concessionari'
