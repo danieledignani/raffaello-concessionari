@@ -50,11 +50,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update version in JSON
+      - name: Update version in JSON with changelog
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
           JSON_PATH=".github/update-metadata/raffaello-concessionari.json"
+
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "$VERSION" | head -n 1)
+          echo "Previous tag: $PREV_TAG"
+
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log "$PREV_TAG..HEAD" --pretty=format:"<li>%s</li>")
+          else
+            CHANGELOG="<li>Versione iniziale</li>"
+          fi
 
           cat <<EOF > $JSON_PATH
           {
@@ -71,7 +80,7 @@ jobs:
             "sections": {
               "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
               "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
-              "changelog": "<ul><li>Auto aggiornamento attivo</li></ul>"
+              "changelog": "<ul>$CHANGELOG</ul>"
             }
           }
           EOF
