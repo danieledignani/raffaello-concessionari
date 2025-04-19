@@ -1,18 +1,17 @@
 {
   "name": "Raffaello Concessionari Add-On",
-  "version": "6.1.3",
-  "download_url": "https://github.com/danieledignani/raffaello-concessionari/releases/download/6.1.3/raffaello-concessionari.zip",
+  "version": "6.1.4",
+  "download_url": "https://github.com/danieledignani/raffaello-concessionari/releases/download/6.1.4/raffaello-concessionari.zip",
   "homepage": "https://raffaelloscuola.it",
   "requires": "5.0",
   "tested": "6.5",
-  "last_updated": "2025-04-19 18:22:28",
+  "last_updated": "2025-04-19 18:30:06",
   "upgrade_notice": "Aggiornamento automatico da GitHub",
   "author": "Daniele Dignani",
   "author_homepage": "https://github.com/danieledignani",
   "sections": {
     "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
     "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
-    "changelog": "<ul><li>test updated</li>
-<li>Update JSON to version 6.1.2</li></ul>"
+    "changelog": "<li>improved release file</li>\n<li>Update JSON to version 6.1.3</li>"
   }
 }
