@@ -12,7 +12,6 @@
   "sections": {
     "description": "Gestione dei concessionari e classi di sconto. Include REST API, struttura avanzata ACF e compatibilità YOOtheme Pro.",
     "installation": "Carica il plugin tramite il pannello 'Plugin > Aggiungi nuovo' o scompatta nella cartella wp-content/plugins/",
-    "changelog": "<ul><li>delete \n in uri</li>
-<li>Update JSON to version 6.1.1</li></ul>"
+    "changelog": "<ul><li>delete \n in uri</li><li>Update JSON to version 6.1.1</li></ul>"
   }
 }
