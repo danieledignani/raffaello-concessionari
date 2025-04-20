@@ -3,7 +3,7 @@
 add_action('init', function() {
     // Solo scuola
     add_rewrite_rule(
-        '^concessionari/scuola-([^/]+)/?$',
+        '^concessionari/scuola_([^/]+)/?$',
         'index.php?post_type=concessionario&concessionario_scuola=$matches[1]',
         'top'
     );
@@ -17,7 +17,7 @@ add_action('init', function() {
 
     // Scuola + Provincia
     add_rewrite_rule(
-        '^concessionari/scuola-([^/]+)/provincia-([^/]+)/?$',
+        '^concessionari/scuola_([^/]+)/provincia-([^/]+)/?$',
         'index.php?post_type=concessionario&concessionario_scuola=$matches[1]&concessionario_provincia=$matches[2]',
         'top'
     );

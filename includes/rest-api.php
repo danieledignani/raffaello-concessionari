@@ -127,11 +127,6 @@ function rc_create_and_update_concessionari_callback( $request ) {
         }
         update_field('classi_sconto', $acf_classi_sconto, $post_id);
 
-        // DEPRECATO: vecchi repeater singoli
-        // update_field('classi_sconto_infanzia', $concessionari_classi_sconto_infanzia, $post_id);
-        // update_field('classi_sconto_primaria', $concessionari_classi_sconto_primaria, $post_id);
-        // update_field('classi_sconto_secondaria', $concessionari_classi_sconto_secondaria, $post_id);
-
         rc_insert_taxonomies_with_slugs($post_id, $concessionari_scuole_slugs, 'concessionario_scuola');
         rc_insert_taxonomies_with_slugs($post_id, $concessionari_province_slugs, 'concessionario_provincia');
     }
