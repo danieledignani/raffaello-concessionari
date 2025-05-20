@@ -125,12 +125,12 @@ function rc_create_and_update_concessionari_callback($request) {
     }
 
     // Elimina i post non più presenti nella lista
-    foreach ($existing_map as $id => $post_id) {
-        if (!in_array($id, $incoming_ids)) {
-            wp_delete_post($post_id, true);
-            wc_get_logger()->info("Post ID $post_id deleted (not in incoming)", $logger_array);
-        }
-    }
+    // foreach ($existing_map as $id => $post_id) {
+    //     if (!in_array($id, $incoming_ids)) {
+    //         wp_delete_post($post_id, true);
+    //         wc_get_logger()->info("Post ID $post_id deleted (not in incoming)", $logger_array);
+    //     }
+    // }
 
     return new WP_REST_Response(['messaggio' => 'Concessionari sincronizzati con successo!'], 200);
 }
