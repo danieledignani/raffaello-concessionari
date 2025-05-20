@@ -24,6 +24,9 @@ function rc_wprc_startsWith($string, $startString) {
     return strncmp($string, $startString, strlen($startString)) === 0;
 }
 function rc_create_and_update_concessionari_callback( $request ) {
+    return new WP_REST_Response(
+        array('messaggio' => 'Temporary disable synch!'), 200
+    );
     $logger_array = array( 'source' => 'concessionari_rest_api_create_and_update' );
     wc_get_logger()->info( 'Start', $logger_array );
 
