@@ -1,6 +1,7 @@
 <?php
 // Crea REST API per la gestione dei concessionari
-function rc_register_concessionari_rest_api_add() {
+function rc_register_concessionari_rest_api_add()
+{
     register_rest_route('wc/v3', 'concessionari_update', array(
         'methods' => 'POST',
         'callback' => 'rc_create_and_update_concessionari_callback',
@@ -14,16 +15,19 @@ function rc_register_concessionari_rest_api_add() {
     ));
 }
 
-function rc_concessionari_permission_check($request) {
+function rc_concessionari_permission_check($request)
+{
     // WooCommerce gestisce automaticamente la verifica OAuth.
     return current_user_can('manage_options');
 }
 
-function rc_wprc_startsWith($string, $startString) {
+function rc_wprc_startsWith($string, $startString)
+{
     return strncmp($string, $startString, strlen($startString)) === 0;
 }
 
-function rc_create_and_update_concessionari_callback($request) {
+function rc_create_and_update_concessionari_callback($request)
+{
     $logger_array = array('source' => 'concessionari_rest_api_create_and_update');
     rc_concessionari_log('Start update concessionari', $request);
     $province_obj = rc_get_province_obj();
@@ -73,10 +77,26 @@ function rc_create_and_update_concessionari_callback($request) {
         $updated_ids[] = $post_id;
 
         // Aggiorna i campi
-        $fields = ['nome', 'email', 'pec', 'telefono', 'cellulare', 'partita_iva', 'portaleconcessionari_id'];
+
+
+        $fields = ['nome', 'email', 'pec', 'partita_iva', 'portaleconcessionari_id'];
         foreach ($fields as $field_key) {
             update_field($field_key, $concessionario[$field_key] ?? '', $post_id);
         }
+
+        // Telefoni (repeater)
+        $telefoni = [];
+        foreach (($concessionario['telefoni'] ?? []) as $tel) {
+            $telefoni[] = ['telefono' => $tel];
+        }
+        update_field('telefoni', $telefoni, $post_id);
+
+        // Cellulari (repeater)
+        $cellulari = [];
+        foreach (($concessionario['cellulari'] ?? []) as $cel) {
+            $cellulari[] = ['cellulare' => $cel];
+        }
+        update_field('cellulari', $cellulari, $post_id);
 
         // Classi sconto
         $classi_sconto_grouped = [];
@@ -136,7 +156,8 @@ function rc_create_and_update_concessionari_callback($request) {
 }
 
 
-function rc_get_concessionari_callback($request) {
+function rc_get_concessionari_callback($request)
+{
     $logger_array = array('source' => 'concessionari_rest_api_get');
     $args = array(
         'post_type'      => 'concessionario',
@@ -170,18 +191,19 @@ function rc_get_concessionari_callback($request) {
     return new WP_REST_Response($output, 200);
 }
 
-function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy) {
-    $logger_array = array( 'source' => 'concessionari_rest_api_create_and_update' );
+function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
+{
+    $logger_array = array('source' => 'concessionari_rest_api_create_and_update');
     $slugs = array_unique($slugs);
     $all_slugs = $slugs; // Creiamo un nuovo array che conterrà anche gli slug dei padri
 
-    if(count($slugs) > 0){
+    if (count($slugs) > 0) {
         foreach ($slugs as $slug) {
             $slug = strtolower($slug);
             $term = get_term_by('slug', $slug, $taxonomy);
             if (!$term) {
                 // Se non esiste lo slug, loggo un errore e lo tolgo dall'array
-                wc_get_logger()->error("Term with slug {$slug} not found on concessionario id ".$post_id, $logger_array);
+                wc_get_logger()->error("Term with slug {$slug} not found on concessionario id " . $post_id, $logger_array);
                 $key = array_search($slug, $slugs);
                 unset($slugs[$key]);
             }
@@ -189,13 +211,14 @@ function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy) {
 
         $result = wp_set_object_terms($post_id, $all_slugs, $taxonomy, false);
         if (is_wp_error($result)) {
-            wc_get_logger()->error("Failed to set object terms for post {$post_id} on concessionario".wc_print_r( $result, true ), $logger_array);
+            wc_get_logger()->error("Failed to set object terms for post {$post_id} on concessionario" . wc_print_r($result, true), $logger_array);
         }
     }
 }
 
 
-function rc_delete_all_concessionari() {
+function rc_delete_all_concessionari()
+{
     $post_type = 'concessionario';
     $logger_array = array('source' => 'delete_all_posts');
 
@@ -212,7 +235,7 @@ function rc_delete_all_concessionari() {
         while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
-            
+
             // Elimina il post
             wp_delete_post($post_id, true); // Imposta il secondo parametro su true per bypassare il cestino
 
@@ -225,6 +248,7 @@ function rc_delete_all_concessionari() {
     }
 }
 
-function rc_admin_permission_api( $request ) {
-    return current_user_can( 'manage_options' ); // Solo gli amministratori possono usare questo endpoint.
+function rc_admin_permission_api($request)
+{
+    return current_user_can('manage_options'); // Solo gli amministratori possono usare questo endpoint.
 }
