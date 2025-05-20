@@ -103,7 +103,7 @@ function rc_create_and_update_concessionari_callback($request)
         }
         update_field('cellulari', $cellulari, $post_id);
 
-        $no_sync = get_field('no_sync_classi_sconto', $post_id);
+        $no_sync = get_field('avoid_classi_sconto_sync', $post_id);
         rc_concessionari_log("Post ID $post_id no_sync $no_sync");
         if ($no_sync) {
             continue;
@@ -212,8 +212,8 @@ function rc_create_and_update_concessionari_callback($request)
         update_field('cellulari', $cellulari, $post_id);
 
         // Flag no_sync
-        $no_sync = get_field('no_sync_classi_sconto', $post_id);
-        rc_concessionari_log("Post ID $post_id no_sync $no_sync");
+        $no_sync = get_field('avoid_classi_sconto_sync', $post_id);
+        rc_concessionari_log("Post ID $post_id avoid_classi_sconto_sync $no_sync");
 
         if (!$no_sync && !empty($concessionario['classi_sconto'])) {
             $classi_sconto_grouped = [];
