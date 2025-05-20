@@ -8,6 +8,12 @@ function rc_register_concessionari_rest_api_add()
         'permission_callback' => 'rc_concessionari_permission_check'
     ));
 
+    register_rest_route('wc/v3', 'concessionario_update', array(
+        'methods' => 'POST',
+        'callback' => 'rc_update_concessionario_callback',
+        'permission_callback' => 'rc_concessionari_permission_check'
+    ));
+
     register_rest_route('wc/v3', 'concessionari', array(
         'methods' => 'GET',
         'callback' => 'rc_get_concessionari_callback',
@@ -28,7 +34,6 @@ function rc_wprc_startsWith($string, $startString)
 
 function rc_create_and_update_concessionari_callback($request)
 {
-    $logger_array = array('source' => 'concessionari_rest_api_create_and_update');
     rc_concessionari_log('Start update concessionari', $request);
     $province_obj = rc_get_province_obj();
 
@@ -99,6 +104,7 @@ function rc_create_and_update_concessionari_callback($request)
         update_field('cellulari', $cellulari, $post_id);
 
         $no_sync = get_field('no_sync_classi_sconto', $post_id);
+        rc_concessionari_log("Post ID $post_id no_sync $no_sync");
         if ($no_sync) {
             continue;
         }
@@ -106,7 +112,7 @@ function rc_create_and_update_concessionari_callback($request)
         $classi_sconto_grouped = [];
         $concessionari_scuole_slugs = [];
         $concessionari_province_slugs = [];
-        
+
         foreach ($concessionario['classi_sconto'] as $classe_sconto) {
             $scuola_slug = $classe_sconto['scuola'];
             $email = $classe_sconto['email'];
@@ -148,13 +154,124 @@ function rc_create_and_update_concessionari_callback($request)
         rc_insert_taxonomies_with_slugs($post_id, $concessionari_province_slugs, 'concessionario_provincia');
     }
 
+    function rc_update_concessionario_callback($request)
+    {
+        rc_concessionari_log('Start single update', $request);
+        $province_obj = rc_get_province_obj();
+        $concessionario = $request->get_json_params();
+
+        if (empty($concessionario['portaleconcessionari_id'])) {
+            return new WP_REST_Response(['errore' => 'portaleconcessionari_id mancante'], 400);
+        }
+
+        $post_id = null;
+        $existing = get_posts([
+            'post_type' => 'concessionario',
+            'posts_per_page' => 1,
+            'post_status' => 'any',
+            'meta_query' => [
+                [
+                    'key'   => 'portaleconcessionari_id',
+                    'value' => $concessionario['portaleconcessionari_id']
+                ]
+            ]
+        ]);
+
+        if ($existing) {
+            $post_id = $existing[0]->ID;
+        }
+
+        $conc_data = [
+            'post_title'   => $concessionario['titolo'],
+            'post_type'    => 'concessionario',
+            'post_status'  => 'publish',
+        ];
+
+        if ($post_id) {
+            $conc_data['ID'] = $post_id;
+            $post_id = wp_update_post($conc_data);
+        } else {
+            $post_id = wp_insert_post($conc_data);
+        }
+
+        if (!$post_id) {
+            return new WP_REST_Response(['errore' => 'Errore nella creazione/aggiornamento del post'], 500);
+        }
+
+        // Campi base
+        $fields = ['nome', 'email', 'pec', 'partita_iva', 'portaleconcessionari_id'];
+        foreach ($fields as $field_key) {
+            update_field($field_key, $concessionario[$field_key] ?? '', $post_id);
+        }
+
+        // Telefoni
+        $telefoni = array_map(fn($tel) => ['telefono' => $tel], $concessionario['telefoni'] ?? []);
+        update_field('telefoni', $telefoni, $post_id);
+
+        $cellulari = array_map(fn($cel) => ['cellulare' => $cel], $concessionario['cellulari'] ?? []);
+        update_field('cellulari', $cellulari, $post_id);
+
+        // Flag no_sync
+        $no_sync = get_field('no_sync_classi_sconto', $post_id);
+        rc_concessionari_log("Post ID $post_id no_sync $no_sync");
+
+        if (!$no_sync && !empty($concessionario['classi_sconto'])) {
+            $classi_sconto_grouped = [];
+            $concessionari_scuole_slugs = [];
+            $concessionari_province_slugs = [];
+
+            foreach ($concessionario['classi_sconto'] as $classe_sconto) {
+                $scuola_slug = $classe_sconto['scuola'];
+                $email = $classe_sconto['email'];
+                $concessionari_scuole_slugs[] = $scuola_slug;
+
+                $scuola_term = get_term_by('slug', $scuola_slug, 'concessionario_scuola');
+                if (!$scuola_term) continue;
+                $scuola_id = (int)$scuola_term->term_id;
+
+                if (!isset($classi_sconto_grouped[$scuola_id])) {
+                    $classi_sconto_grouped[$scuola_id] = [
+                        'scuola' => $scuola_id,
+                        'email' => $email,
+                        'zone' => [],
+                    ];
+                }
+
+                foreach ($classe_sconto['zone'] as $zona) {
+                    $provincia_slug = rc_get_provincia_slug_from_sigla($province_obj, $zona['provincia']);
+                    $concessionari_province_slugs[] = $provincia_slug;
+                    $provincia_term = get_term_by('slug', $provincia_slug, 'concessionario_provincia');
+                    if (!$provincia_term) continue;
+
+                    $tipo = [];
+                    if (!empty($zona['vendita'])) $tipo[] = 'vendita';
+                    if (!empty($zona['propaganda'])) $tipo[] = 'promozione';
+
+                    $classi_sconto_grouped[$scuola_id]['zone'][] = [
+                        'provincia' => (int)$provincia_term->term_id,
+                        'tipo' => $tipo,
+                    ];
+                }
+            }
+
+            $acf_classi_sconto = array_values($classi_sconto_grouped);
+            update_field('classi_sconto', $acf_classi_sconto, $post_id);
+
+            rc_insert_taxonomies_with_slugs($post_id, $concessionari_scuole_slugs, 'concessionario_scuola');
+            rc_insert_taxonomies_with_slugs($post_id, $concessionari_province_slugs, 'concessionario_provincia');
+        }
+
+        return new WP_REST_Response(['messaggio' => 'Concessionario aggiornato con successo', 'post_id' => $post_id], 200);
+    }
+
+
     // Elimina i post non più presenti nella lista
-    // foreach ($existing_map as $id => $post_id) {
-    //     if (!in_array($id, $incoming_ids)) {
-    //         wp_delete_post($post_id, true);
-    //         wc_get_logger()->info("Post ID $post_id deleted (not in incoming)", $logger_array);
-    //     }
-    // }
+    foreach ($existing_map as $id => $post_id) {
+        if (!in_array($id, $incoming_ids)) {
+            wp_delete_post($post_id, true);
+            rc_concessionari_log("Post ID $post_id deleted (not in incoming)");
+        }
+    }
 
     return new WP_REST_Response(['messaggio' => 'Concessionari sincronizzati con successo!'], 200);
 }
