@@ -98,11 +98,15 @@ function rc_create_and_update_concessionari_callback($request)
         }
         update_field('cellulari', $cellulari, $post_id);
 
+        $no_sync = get_field('no_sync_classi_sconto', $post_id);
+        if ($no_sync) {
+            continue;
+        }
         // Classi sconto
         $classi_sconto_grouped = [];
         $concessionari_scuole_slugs = [];
         $concessionari_province_slugs = [];
-
+        
         foreach ($concessionario['classi_sconto'] as $classe_sconto) {
             $scuola_slug = $classe_sconto['scuola'];
             $email = $classe_sconto['email'];
