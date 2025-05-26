@@ -225,7 +225,7 @@ function rc_get_concessionari_callback($request) {
                 foreach ($cs['zone'] ?? [] as $zona) {
                     $prov_term = get_term($zona['provincia'], 'concessionario_provincia');
                     $provincia_name = $prov_term ? $prov_term->name : '';
-                    $sigla = rc_get_provincia_sigla_from_slug($province_obj, $provincia_name);
+                    $sigla = rc_get_provincia_sigla_from_nome($province_obj, $provincia_name);
 
                     $zone[] = [
                         'provincia' => $sigla ?? '',

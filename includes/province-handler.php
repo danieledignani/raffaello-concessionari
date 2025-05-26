@@ -86,15 +86,14 @@ function rc_get_provincia_slug_from_sigla($province_obj, $sigla) {
     return null; // Se non trovata, restituisce null
 }
 
-function rc_get_provincia_sigla_from_slug($province_obj, $slug) {
+function rc_get_provincia_sigla_from_nome($province_obj, $nome) {
     foreach ($province_obj as $provincia_obj) {
-        if (rc_get_slug_value($provincia_obj['nome']) === $slug) {
+        if (strcasecmp($provincia_obj['nome'], $nome) === 0) {
             return strtoupper($provincia_obj['sigla']);
         }
     }
-    return $slug; // fallback al valore originale se non trovato
+    return $nome;
 }
-
 
 function rc_get_slug_value($string, $without_dash = false) {
     $string = strtolower($string); // Converti la stringa in minuscolo
