@@ -1,375 +1,224 @@
 <?php
-// Crea REST API per la gestione dei concessionari
-function rc_register_concessionari_rest_api_add()
-{
-    register_rest_route('wc/v3', 'concessionari_update', array(
-        'methods' => 'POST',
-        'callback' => 'rc_create_and_update_concessionari_callback',
-        'permission_callback' => 'rc_concessionari_permission_check'
-    ));
 
-    register_rest_route('wc/v3', 'concessionario_update', array(
+function rc_register_concessionari_rest_api_add() {
+    register_rest_route('wc/v3', 'concessionari/bulk', [
         'methods' => 'POST',
-        'callback' => 'rc_update_concessionario_callback',
+        'callback' => 'rc_sync_concessionari_callback',
         'permission_callback' => 'rc_concessionari_permission_check'
-    ));
+    ]);
 
-    register_rest_route('wc/v3', 'concessionari', array(
+    register_rest_route('wc/v3', 'concessionari/(?P<id>\\d+)', [
+        'methods' => 'POST',
+        'callback' => 'rc_upsert_single_concessionario_callback',
+        'permission_callback' => 'rc_concessionari_permission_check'
+    ]);
+
+    register_rest_route('wc/v3', 'concessionari/(?P<id>\\d+)', [
+        'methods' => 'DELETE',
+        'callback' => 'rc_delete_single_concessionario_callback',
+        'permission_callback' => 'rc_concessionari_permission_check'
+    ]);
+
+    register_rest_route('wc/v3', 'concessionari', [
         'methods' => 'GET',
         'callback' => 'rc_get_concessionari_callback',
         'permission_callback' => 'rc_concessionari_permission_check'
-    ));
+    ]);
 }
 
-function rc_concessionari_permission_check($request)
-{
-    // WooCommerce gestisce automaticamente la verifica OAuth.
+function rc_concessionari_permission_check($request) {
     return current_user_can('manage_options');
 }
 
-function rc_wprc_startsWith($string, $startString)
-{
-    return strncmp($string, $startString, strlen($startString)) === 0;
-}
-
-function rc_create_and_update_concessionari_callback($request)
-{
-    wc_get_logger()->debug('Start update concessionari'.wc_print_r($request, true));
-    $province_obj = rc_get_province_obj();
-
+function rc_sync_concessionari_callback($request) {
     $incoming = $request->get_json_params();
-    $incoming_ids = array_column($incoming, 'portaleconcessionari_id');
-
-    // Trova i post esistenti con portaleconcessionari_id
-    $existing_posts = get_posts([
-        'post_type' => 'concessionario',
-        'posts_per_page' => -1,
-        'post_status' => 'any',
-        'meta_query' => [
-            [
-                'key'     => 'portaleconcessionari_id',
-                'compare' => 'EXISTS',
-            ]
-        ]
-    ]);
-
-    $existing_map = [];
-    foreach ($existing_posts as $post) {
-        $id = get_field('portaleconcessionari_id', $post->ID);
-        if ($id) $existing_map[$id] = $post->ID;
-    }
-
     $updated_ids = [];
 
     foreach ($incoming as $concessionario) {
-        $concessionario_id = $concessionario['portaleconcessionari_id'];
-        $post_id = $existing_map[$concessionario_id] ?? null;
-
-        $conc_data = array(
-            'post_title'   => $concessionario['titolo'],
-            'post_type'    => 'concessionario',
-            'post_status'  => 'publish',
-        );
-
+        $post_id = rc_upsert_concessionario($concessionario);
         if ($post_id) {
-            $conc_data['ID'] = $post_id;
-            $post_id = wp_update_post($conc_data);
-        } else {
-            $post_id = wp_insert_post($conc_data);
+            $updated_ids[] = $post_id;
         }
-
-        if (!$post_id) continue;
-        $updated_ids[] = $post_id;
-
-        // Aggiorna i campi
-
-
-        $fields = ['nome', 'email', 'pec', 'partita_iva', 'portaleconcessionari_id'];
-        foreach ($fields as $field_key) {
-            update_field($field_key, $concessionario[$field_key] ?? '', $post_id);
-        }
-
-        // Telefoni (repeater)
-        $telefoni = [];
-        foreach (($concessionario['telefoni'] ?? []) as $tel) {
-            $telefoni[] = ['telefono' => $tel];
-        }
-        update_field('telefoni', $telefoni, $post_id);
-
-        // Cellulari (repeater)
-        $cellulari = [];
-        foreach (($concessionario['cellulari'] ?? []) as $cel) {
-            $cellulari[] = ['cellulare' => $cel];
-        }
-        update_field('cellulari', $cellulari, $post_id);
-
-        $avoid_classi_sconto_sync = get_field('avoid_classi_sconto_sync', $post_id);
-
-        wc_get_logger()->debug("Post ID $post_id no_sync $avoid_classi_sconto_sync");
-
-        if ($avoid_classi_sconto_sync) {
-            continue;
-        }
-        // Classi sconto
-        $classi_sconto_grouped = [];
-        $concessionari_scuole_slugs = [];
-        $concessionari_province_slugs = [];
-
-        foreach ($concessionario['classi_sconto'] as $classe_sconto) {
-            $scuola_slug = $classe_sconto['scuola'];
-            $email = $classe_sconto['email'];
-            $concessionari_scuole_slugs[] = $scuola_slug;
-
-            $scuola_term = get_term_by('slug', $scuola_slug, 'concessionario_scuola');
-            if (!$scuola_term) continue;
-            $scuola_id = (int)$scuola_term->term_id;
-
-            if (!isset($classi_sconto_grouped[$scuola_id])) {
-                $classi_sconto_grouped[$scuola_id] = [
-                    'scuola' => $scuola_id,
-                    'email' => $email,
-                    'zone' => [],
-                ];
-            }
-
-            foreach ($classe_sconto['zone'] as $zona) {
-                $provincia_slug = rc_get_provincia_slug_from_sigla($province_obj, $zona['provincia']);
-                $concessionari_province_slugs[] = $provincia_slug;
-                $provincia_term = get_term_by('slug', $provincia_slug, 'concessionario_provincia');
-                if (!$provincia_term) continue;
-
-                $tipo = [];
-                if (!empty($zona['vendita'])) $tipo[] = 'vendita';
-                if (!empty($zona['propaganda'])) $tipo[] = 'promozione';
-
-                $classi_sconto_grouped[$scuola_id]['zone'][] = [
-                    'provincia' => (int)$provincia_term->term_id,
-                    'tipo' => $tipo,
-                ];
-            }
-        }
-
-        $acf_classi_sconto = array_values($classi_sconto_grouped);
-        update_field('classi_sconto', $acf_classi_sconto, $post_id);
-
-        rc_insert_taxonomies_with_slugs($post_id, $concessionari_scuole_slugs, 'concessionario_scuola');
-        rc_insert_taxonomies_with_slugs($post_id, $concessionari_province_slugs, 'concessionario_provincia');
     }
 
-    function rc_update_concessionario_callback($request)
-    {
-        wc_get_logger()->debug('Start single update'.wc_print_r($request, true));
-
-        $province_obj = rc_get_province_obj();
-        $concessionario = $request->get_json_params();
-
-        if (empty($concessionario['portaleconcessionari_id'])) {
-            return new WP_REST_Response(['errore' => 'portaleconcessionari_id mancante'], 400);
-        }
-
-        $post_id = null;
-        $existing = get_posts([
-            'post_type' => 'concessionario',
-            'posts_per_page' => 1,
-            'post_status' => 'any',
-            'meta_query' => [
-                [
-                    'key'   => 'portaleconcessionari_id',
-                    'value' => $concessionario['portaleconcessionari_id']
-                ]
-            ]
-        ]);
-
-        if ($existing) {
-            $post_id = $existing[0]->ID;
-        }
-
-        $conc_data = [
-            'post_title'   => $concessionario['titolo'],
-            'post_type'    => 'concessionario',
-            'post_status'  => 'publish',
-        ];
-
-        if ($post_id) {
-            $conc_data['ID'] = $post_id;
-            $post_id = wp_update_post($conc_data);
-        } else {
-            $post_id = wp_insert_post($conc_data);
-        }
-
-        if (!$post_id) {
-            return new WP_REST_Response(['errore' => 'Errore nella creazione/aggiornamento del post'], 500);
-        }
-
-        // Campi base
-        $fields = ['nome', 'email', 'pec', 'partita_iva', 'portaleconcessionari_id'];
-        foreach ($fields as $field_key) {
-            update_field($field_key, $concessionario[$field_key] ?? '', $post_id);
-        }
-
-        // Telefoni
-        $telefoni = array_map(fn($tel) => ['telefono' => $tel], $concessionario['telefoni'] ?? []);
-        update_field('telefoni', $telefoni, $post_id);
-
-        $cellulari = array_map(fn($cel) => ['cellulare' => $cel], $concessionario['cellulari'] ?? []);
-        update_field('cellulari', $cellulari, $post_id);
-
-        // Flag no_sync
-        $avoid_classi_sconto_sync = get_field('avoid_classi_sconto_sync', $post_id);
-        wc_get_logger()->debug("Post ID $post_id avoid_classi_sconto_sync $avoid_classi_sconto_sync");
-
-        if (!$avoid_classi_sconto_sync && !empty($concessionario['classi_sconto'])) {
-            $classi_sconto_grouped = [];
-            $concessionari_scuole_slugs = [];
-            $concessionari_province_slugs = [];
-
-            foreach ($concessionario['classi_sconto'] as $classe_sconto) {
-                $scuola_slug = $classe_sconto['scuola'];
-                $email = $classe_sconto['email'];
-                $concessionari_scuole_slugs[] = $scuola_slug;
-
-                $scuola_term = get_term_by('slug', $scuola_slug, 'concessionario_scuola');
-                if (!$scuola_term) continue;
-                $scuola_id = (int)$scuola_term->term_id;
-
-                if (!isset($classi_sconto_grouped[$scuola_id])) {
-                    $classi_sconto_grouped[$scuola_id] = [
-                        'scuola' => $scuola_id,
-                        'email' => $email,
-                        'zone' => [],
-                    ];
-                }
-
-                foreach ($classe_sconto['zone'] as $zona) {
-                    $provincia_slug = rc_get_provincia_slug_from_sigla($province_obj, $zona['provincia']);
-                    $concessionari_province_slugs[] = $provincia_slug;
-                    $provincia_term = get_term_by('slug', $provincia_slug, 'concessionario_provincia');
-                    if (!$provincia_term) continue;
-
-                    $tipo = [];
-                    if (!empty($zona['vendita'])) $tipo[] = 'vendita';
-                    if (!empty($zona['propaganda'])) $tipo[] = 'promozione';
-
-                    $classi_sconto_grouped[$scuola_id]['zone'][] = [
-                        'provincia' => (int)$provincia_term->term_id,
-                        'tipo' => $tipo,
-                    ];
-                }
-            }
-
-            $acf_classi_sconto = array_values($classi_sconto_grouped);
-            update_field('classi_sconto', $acf_classi_sconto, $post_id);
-
-            rc_insert_taxonomies_with_slugs($post_id, $concessionari_scuole_slugs, 'concessionario_scuola');
-            rc_insert_taxonomies_with_slugs($post_id, $concessionari_province_slugs, 'concessionario_provincia');
-        }
-
-        return new WP_REST_Response(['messaggio' => 'Concessionario aggiornato con successo', 'post_id' => $post_id], 200);
-    }
-
-
-    // Elimina i post non più presenti nella lista
-    // foreach ($existing_map as $id => $post_id) {
-    //     if (!in_array($id, $incoming_ids)) {
-    //         wp_delete_post($post_id, true);
-    //         wc_get_logger()->info("Post ID $post_id deleted (not in incoming)");
-    //     }
-    // }
-
-    return new WP_REST_Response(['messaggio' => 'Concessionari sincronizzati con successo!'], 200);
+    return new WP_REST_Response(['messaggio' => 'Concessionari sincronizzati', 'post_ids' => $updated_ids], 200);
 }
 
+function rc_upsert_single_concessionario_callback($request) {
+    $id = $request->get_param('id');
+    $concessionario = $request->get_json_params();
+    $concessionario['portaleconcessionari_id'] = $id;
 
-function rc_get_concessionari_callback($request)
-{
-    $args = array(
-        'post_type'      => 'concessionario',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1
-    );
+    $post_id = rc_upsert_concessionario($concessionario);
 
-    $query = new WP_Query($args);
-    $output = [];
-
-    if ($query->have_posts()) {
-        while ($query->have_posts()) {
-            $query->the_post();
-            $post_id = get_the_ID();
-
-            $acf_fields = get_fields($post_id);
-            $scuole = wp_get_post_terms($post_id, 'concessionario_scuola', ['fields' => 'all']);
-            $province = wp_get_post_terms($post_id, 'concessionario_provincia', ['fields' => 'all']);
-
-            $output[] = array(
-                'ID' => $post_id,
-                'post_title' => get_the_title(),
-                'acf_fields' => $acf_fields,
-                'scuole' => $scuole,
-                'province' => $province
-            );
-        }
-        wp_reset_postdata();
+    if (!$post_id) {
+        return new WP_REST_Response(['errore' => 'Errore in creazione/aggiornamento'], 500);
     }
+
+    return new WP_REST_Response(['messaggio' => 'Concessionario aggiornato con successo', 'post_id' => $post_id], 200);
+}
+
+function rc_delete_single_concessionario_callback($request) {
+    $id = $request->get_param('id');
+
+    $existing = get_posts([
+        'post_type' => 'concessionario',
+        'posts_per_page' => 1,
+        'post_status' => 'any',
+        'meta_query' => [[
+            'key' => 'portaleconcessionari_id',
+            'value' => $id
+        ]]
+    ]);
+
+    if (!$existing) {
+        return new WP_REST_Response(['errore' => 'Concessionario non trovato'], 404);
+    }
+
+    $post_id = $existing[0]->ID;
+
+    // Rimuove tassonomie
+    wp_set_object_terms($post_id, [], 'concessionario_scuola');
+    wp_set_object_terms($post_id, [], 'concessionario_provincia');
+
+    // Rimuove campi ACF noti
+    $acf_fields = [
+        'classi_sconto', 'telefoni', 'cellulari', 'nome', 'email',
+        'pec', 'partita_iva', 'portaleconcessionari_id', 'avoid_classi_sconto_sync'
+    ];
+    foreach ($acf_fields as $field) {
+        delete_field($field, $post_id);
+    }
+
+    $result = wp_delete_post($post_id, true);
+
+    if (!$result) {
+        return new WP_REST_Response(['errore' => 'Errore durante l\'eliminazione'], 500);
+    }
+
+    return new WP_REST_Response(['messaggio' => "Concessionario eliminato", 'post_id' => $post_id], 200);
+}
+
+function rc_upsert_concessionario(array $concessionario): ?int {
+    $province_obj = rc_get_province_obj();
+
+    if (empty($concessionario['portaleconcessionari_id'])) return null;
+
+    $existing = get_posts([
+        'post_type' => 'concessionario',
+        'posts_per_page' => 1,
+        'post_status' => 'any',
+        'meta_query' => [[
+            'key'   => 'portaleconcessionari_id',
+            'value' => $concessionario['portaleconcessionari_id']
+        ]]
+    ]);
+
+    $post_id = $existing ? $existing[0]->ID : null;
+    $conc_data = [
+        'post_title'  => $concessionario['titolo'],
+        'post_type'   => 'concessionario',
+        'post_status' => 'publish',
+    ];
+
+    $post_id = $post_id ? wp_update_post(['ID' => $post_id] + $conc_data) : wp_insert_post($conc_data);
+    if (!$post_id) return null;
+
+    $fields = ['nome', 'email', 'pec', 'partita_iva', 'portaleconcessionari_id'];
+    foreach ($fields as $field) {
+        update_field($field, $concessionario[$field] ?? '', $post_id);
+    }
+
+    update_field('telefoni', array_map(fn($v) => ['telefono' => $v], $concessionario['telefoni'] ?? []), $post_id);
+    update_field('cellulari', array_map(fn($v) => ['cellulare' => $v], $concessionario['cellulari'] ?? []), $post_id);
+
+    if (!get_field('avoid_classi_sconto_sync', $post_id) && !empty($concessionario['classi_sconto'])) {
+        rc_update_classi_sconto($post_id, $concessionario['classi_sconto'], $province_obj);
+    }
+
+    return $post_id;
+}
+
+function rc_update_classi_sconto($post_id, $classi_sconto, $province_obj) {
+    $grouped = [];
+    $scuole_slugs = [];
+    $province_slugs = [];
+
+    foreach ($classi_sconto as $cs) {
+        $scuola_slug = $cs['scuola'];
+        $scuole_slugs[] = $scuola_slug;
+        $scuola_term = get_term_by('slug', $scuola_slug, 'concessionario_scuola');
+        if (!$scuola_term) continue;
+
+        $scuola_id = (int)$scuola_term->term_id;
+        if (!isset($grouped[$scuola_id])) {
+            $grouped[$scuola_id] = [
+                'scuola' => $scuola_id,
+                'email' => $cs['email'] ?? '',
+                'zone'  => [],
+            ];
+        }
+
+        foreach ($cs['zone'] as $zona) {
+            $provincia_slug = rc_get_provincia_slug_from_sigla($province_obj, $zona['provincia']);
+            $province_slugs[] = $provincia_slug;
+            $prov_term = get_term_by('slug', $provincia_slug, 'concessionario_provincia');
+            if (!$prov_term) continue;
+
+            $tipo = [];
+            if (!empty($zona['vendita'])) $tipo[] = 'vendita';
+            if (!empty($zona['propaganda'])) $tipo[] = 'promozione';
+
+            $grouped[$scuola_id]['zone'][] = [
+                'provincia' => (int)$prov_term->term_id,
+                'tipo' => $tipo
+            ];
+        }
+    }
+
+    update_field('classi_sconto', array_values($grouped), $post_id);
+    rc_insert_taxonomies_with_slugs($post_id, $scuole_slugs, 'concessionario_scuola');
+    rc_insert_taxonomies_with_slugs($post_id, $province_slugs, 'concessionario_provincia');
+}
+
+function rc_get_concessionari_callback($request) {
+    $query = new WP_Query([
+        'post_type' => 'concessionario',
+        'post_status' => 'publish',
+        'posts_per_page' => -1
+    ]);
+
+    $output = [];
+    while ($query->have_posts()) {
+        $query->the_post();
+        $post_id = get_the_ID();
+
+        $output[] = [
+            'ID' => $post_id,
+            'post_title' => get_the_title(),
+            'acf_fields' => get_fields($post_id),
+            'scuole' => wp_get_post_terms($post_id, 'concessionario_scuola', ['fields' => 'all']),
+            'province' => wp_get_post_terms($post_id, 'concessionario_provincia', ['fields' => 'all'])
+        ];
+    }
+    wp_reset_postdata();
 
     return new WP_REST_Response($output, 200);
 }
 
-function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
-{
+function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy) {
     $slugs = array_unique($slugs);
-    $all_slugs = $slugs; // Creiamo un nuovo array che conterrà anche gli slug dei padri
+    $valid_slugs = [];
 
-    if (count($slugs) > 0) {
-        foreach ($slugs as $slug) {
-            $slug = strtolower($slug);
-            $term = get_term_by('slug', $slug, $taxonomy);
-            if (!$term) {
-                // Se non esiste lo slug, loggo un errore e lo tolgo dall'array
-                wc_get_logger()->error("Term with slug {$slug} not found on concessionario id " . $post_id);
-                $key = array_search($slug, $slugs);
-                unset($slugs[$key]);
-            }
-        }
+    foreach ($slugs as $slug) {
+        $term = get_term_by('slug', strtolower($slug), $taxonomy);
+        if ($term) $valid_slugs[] = $term->slug;
+    }
 
-        $result = wp_set_object_terms($post_id, $all_slugs, $taxonomy, false);
+    if (!empty($valid_slugs)) {
+        $result = wp_set_object_terms($post_id, $valid_slugs, $taxonomy, false);
         if (is_wp_error($result)) {
-            wc_get_logger()->error("Failed to set object terms for post {$post_id} on concessionario" . wc_print_r($result, true));
+            wc_get_logger()->error("Errore impostando la tassonomia $taxonomy per post $post_id: " . wc_print_r($result, true));
         }
     }
-}
-
-
-function rc_delete_all_concessionari()
-{
-    $post_type = 'concessionario';
-
-    // Ottieni tutti i post di un determinato tipo
-    $args = array(
-        'post_type'      => $post_type,
-        'posts_per_page' => -1, // Seleziona tutti i post
-        'post_status'    => 'any' // Includi post in qualsiasi stato
-    );
-
-    $query = new WP_Query($args);
-
-    if ($query->have_posts()) {
-        while ($query->have_posts()) {
-            $query->the_post();
-            $post_id = get_the_ID();
-
-            // Elimina il post
-            wp_delete_post($post_id, true); // Imposta il secondo parametro su true per bypassare il cestino
-
-            // Aggiungi un log per ogni post eliminato
-            wc_get_logger()->info("Post ID $post_id deleted");
-        }
-        wp_reset_postdata();
-    } else {
-        wc_get_logger()->info("No posts found for post type: $post_type");
-    }
-}
-
-function rc_admin_permission_api($request)
-{
-    return current_user_can('manage_options'); // Solo gli amministratori possono usare questo endpoint.
 }
