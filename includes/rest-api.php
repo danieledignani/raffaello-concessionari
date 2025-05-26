@@ -183,6 +183,8 @@ function rc_update_classi_sconto($post_id, $classi_sconto, $province_obj) {
 
 
 function rc_get_concessionari_callback($request) {
+    $province_obj = rc_get_province_obj();
+
     $query = new WP_Query([
         'post_type' => 'concessionario',
         'post_status' => 'publish',
@@ -222,9 +224,11 @@ function rc_get_concessionari_callback($request) {
                 $zone = [];
                 foreach ($cs['zone'] ?? [] as $zona) {
                     $prov_term = get_term($zona['provincia'], 'concessionario_provincia');
-                    $provincia_slug = $prov_term ? $prov_term->slug : '';
+                    $provincia_name = $prov_term ? $prov_term->name : '';
+                    $sigla = rc_get_provincia_sigla_from_slug($province_obj, $provincia_name);
+
                     $zone[] = [
-                        'provincia' => $provincia_slug,
+                        'provincia' => $sigla ?? '',
                         'vendita' => in_array('vendita', $zona['tipo'] ?? []),
                         'propaganda' => in_array('promozione', $zona['tipo'] ?? []),
                     ];
