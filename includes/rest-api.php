@@ -192,14 +192,47 @@ function rc_get_concessionari_callback($request) {
     while ($query->have_posts()) {
         $query->the_post();
         $post_id = get_the_ID();
+        $acf = get_fields($post_id);
 
-        $output[] = [
-            'ID' => $post_id,
-            'post_title' => get_the_title(),
-            'acf_fields' => get_fields($post_id),
-            'scuole' => wp_get_post_terms($post_id, 'concessionario_scuola', ['fields' => 'all']),
-            'province' => wp_get_post_terms($post_id, 'concessionario_provincia', ['fields' => 'all'])
+        $classi_sconto = $acf['classi_sconto'] ?? [];
+        $telefoni = array_map(fn($r) => $r['telefono'], $acf['telefoni'] ?? []);
+        $cellulari = array_map(fn($r) => $r['cellulare'], $acf['cellulari'] ?? []);
+
+        $item = [
+            'titolo' => get_the_title(),
+            'nome' => $acf['nome'] ?? '',
+            'email' => $acf['email'] ?? '',
+            'pec' => $acf['pec'] ?? '',
+            'partita_iva' => $acf['partita_iva'] ?? '',
+            'portaleconcessionari_id' => $acf['portaleconcessionari_id'] ?? '',
+            'telefoni' => $telefoni,
+            'cellulari' => $cellulari,
+            'classi_sconto' => [],
         ];
+
+        foreach ($classi_sconto as $cs) {
+            $scuola_term = get_term($cs['scuola'], 'concessionario_scuola');
+            $scuola_slug = $scuola_term ? $scuola_term->slug : '';
+
+            $zone = [];
+            foreach ($cs['zone'] ?? [] as $zona) {
+                $prov_term = get_term($zona['provincia'], 'concessionario_provincia');
+                $provincia_sigla = $prov_term ? $prov_term->slug : '';
+                $zone[] = [
+                    'provincia' => $provincia_sigla,
+                    'vendita' => in_array('vendita', $zona['tipo'] ?? []),
+                    'propaganda' => in_array('promozione', $zona['tipo'] ?? []),
+                ];
+            }
+
+            $item['classi_sconto'][] = [
+                'scuola' => $scuola_slug,
+                'email' => $cs['email'] ?? '',
+                'zone' => $zone
+            ];
+        }
+
+        $output[] = $item;
     }
     wp_reset_postdata();
 
