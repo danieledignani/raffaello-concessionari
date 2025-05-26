@@ -181,6 +181,7 @@ function rc_update_classi_sconto($post_id, $classi_sconto, $province_obj) {
     rc_insert_taxonomies_with_slugs($post_id, $province_slugs, 'concessionario_provincia');
 }
 
+
 function rc_get_concessionari_callback($request) {
     $query = new WP_Query([
         'post_type' => 'concessionario',
@@ -194,11 +195,50 @@ function rc_get_concessionari_callback($request) {
         $post_id = get_the_ID();
         $acf = get_fields($post_id);
 
-        $classi_sconto = $acf['classi_sconto'] ?? [];
-        $telefoni = array_map(fn($r) => $r['telefono'], $acf['telefoni'] ?? []);
-        $cellulari = array_map(fn($r) => $r['cellulare'], $acf['cellulari'] ?? []);
+        $telefoni = [];
+        if (!empty($acf['telefoni']) && is_array($acf['telefoni'])) {
+            foreach ($acf['telefoni'] as $r) {
+                if (!empty($r['telefono'])) {
+                    $telefoni[] = $r['telefono'];
+                }
+            }
+        }
 
-        $item = [
+        $cellulari = [];
+        if (!empty($acf['cellulari']) && is_array($acf['cellulari'])) {
+            foreach ($acf['cellulari'] as $r) {
+                if (!empty($r['cellulare'])) {
+                    $cellulari[] = $r['cellulare'];
+                }
+            }
+        }
+
+        $classi_sconto = [];
+        if (!empty($acf['classi_sconto']) && is_array($acf['classi_sconto'])) {
+            foreach ($acf['classi_sconto'] as $cs) {
+                $scuola_term = get_term($cs['scuola'], 'concessionario_scuola');
+                $scuola_slug = $scuola_term ? $scuola_term->slug : '';
+
+                $zone = [];
+                foreach ($cs['zone'] ?? [] as $zona) {
+                    $prov_term = get_term($zona['provincia'], 'concessionario_provincia');
+                    $provincia_slug = $prov_term ? $prov_term->slug : '';
+                    $zone[] = [
+                        'provincia' => $provincia_slug,
+                        'vendita' => in_array('vendita', $zona['tipo'] ?? []),
+                        'propaganda' => in_array('promozione', $zona['tipo'] ?? []),
+                    ];
+                }
+
+                $classi_sconto[] = [
+                    'scuola' => $scuola_slug,
+                    'email' => $cs['email'] ?? '',
+                    'zone' => $zone
+                ];
+            }
+        }
+
+        $output[] = [
             'titolo' => get_the_title(),
             'nome' => $acf['nome'] ?? '',
             'email' => $acf['email'] ?? '',
@@ -207,37 +247,14 @@ function rc_get_concessionari_callback($request) {
             'portaleconcessionari_id' => $acf['portaleconcessionari_id'] ?? '',
             'telefoni' => $telefoni,
             'cellulari' => $cellulari,
-            'classi_sconto' => [],
+            'classi_sconto' => $classi_sconto,
         ];
-
-        foreach ($classi_sconto as $cs) {
-            $scuola_term = get_term($cs['scuola'], 'concessionario_scuola');
-            $scuola_slug = $scuola_term ? $scuola_term->slug : '';
-
-            $zone = [];
-            foreach ($cs['zone'] ?? [] as $zona) {
-                $prov_term = get_term($zona['provincia'], 'concessionario_provincia');
-                $provincia_sigla = $prov_term ? $prov_term->slug : '';
-                $zone[] = [
-                    'provincia' => $provincia_sigla,
-                    'vendita' => in_array('vendita', $zona['tipo'] ?? []),
-                    'propaganda' => in_array('promozione', $zona['tipo'] ?? []),
-                ];
-            }
-
-            $item['classi_sconto'][] = [
-                'scuola' => $scuola_slug,
-                'email' => $cs['email'] ?? '',
-                'zone' => $zone
-            ];
-        }
-
-        $output[] = $item;
     }
     wp_reset_postdata();
 
     return new WP_REST_Response($output, 200);
 }
+
 
 function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy) {
     $slugs = array_unique($slugs);
