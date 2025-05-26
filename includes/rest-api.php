@@ -34,7 +34,7 @@ function rc_wprc_startsWith($string, $startString)
 
 function rc_create_and_update_concessionari_callback($request)
 {
-    rc_concessionari_log('Start update concessionari', $request);
+    wc_get_logger()->debug('Start update concessionari'.wc_print_r($request, true));
     $province_obj = rc_get_province_obj();
 
     $incoming = $request->get_json_params();
@@ -103,9 +103,11 @@ function rc_create_and_update_concessionari_callback($request)
         }
         update_field('cellulari', $cellulari, $post_id);
 
-        $no_sync = get_field('avoid_classi_sconto_sync', $post_id);
-        rc_concessionari_log("Post ID $post_id no_sync $no_sync");
-        if ($no_sync) {
+        $avoid_classi_sconto_sync = get_field('avoid_classi_sconto_sync', $post_id);
+
+        wc_get_logger()->debug("Post ID $post_id no_sync $avoid_classi_sconto_sync");
+
+        if ($avoid_classi_sconto_sync) {
             continue;
         }
         // Classi sconto
@@ -156,7 +158,8 @@ function rc_create_and_update_concessionari_callback($request)
 
     function rc_update_concessionario_callback($request)
     {
-        rc_concessionari_log('Start single update', $request);
+        wc_get_logger()->debug('Start single update'.wc_print_r($request, true));
+
         $province_obj = rc_get_province_obj();
         $concessionario = $request->get_json_params();
 
@@ -212,10 +215,10 @@ function rc_create_and_update_concessionari_callback($request)
         update_field('cellulari', $cellulari, $post_id);
 
         // Flag no_sync
-        $no_sync = get_field('avoid_classi_sconto_sync', $post_id);
-        rc_concessionari_log("Post ID $post_id avoid_classi_sconto_sync $no_sync");
+        $avoid_classi_sconto_sync = get_field('avoid_classi_sconto_sync', $post_id);
+        wc_get_logger()->debug("Post ID $post_id avoid_classi_sconto_sync $avoid_classi_sconto_sync");
 
-        if (!$no_sync && !empty($concessionario['classi_sconto'])) {
+        if (!$avoid_classi_sconto_sync && !empty($concessionario['classi_sconto'])) {
             $classi_sconto_grouped = [];
             $concessionari_scuole_slugs = [];
             $concessionari_province_slugs = [];
@@ -269,7 +272,7 @@ function rc_create_and_update_concessionari_callback($request)
     // foreach ($existing_map as $id => $post_id) {
     //     if (!in_array($id, $incoming_ids)) {
     //         wp_delete_post($post_id, true);
-    //         rc_concessionari_log("Post ID $post_id deleted (not in incoming)");
+    //         wc_get_logger()->info("Post ID $post_id deleted (not in incoming)");
     //     }
     // }
 
@@ -279,7 +282,6 @@ function rc_create_and_update_concessionari_callback($request)
 
 function rc_get_concessionari_callback($request)
 {
-    $logger_array = array('source' => 'concessionari_rest_api_get');
     $args = array(
         'post_type'      => 'concessionario',
         'post_status'    => 'publish',
@@ -314,7 +316,6 @@ function rc_get_concessionari_callback($request)
 
 function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
 {
-    $logger_array = array('source' => 'concessionari_rest_api_create_and_update');
     $slugs = array_unique($slugs);
     $all_slugs = $slugs; // Creiamo un nuovo array che conterrà anche gli slug dei padri
 
@@ -324,7 +325,7 @@ function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
             $term = get_term_by('slug', $slug, $taxonomy);
             if (!$term) {
                 // Se non esiste lo slug, loggo un errore e lo tolgo dall'array
-                wc_get_logger()->error("Term with slug {$slug} not found on concessionario id " . $post_id, $logger_array);
+                wc_get_logger()->error("Term with slug {$slug} not found on concessionario id " . $post_id);
                 $key = array_search($slug, $slugs);
                 unset($slugs[$key]);
             }
@@ -332,7 +333,7 @@ function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
 
         $result = wp_set_object_terms($post_id, $all_slugs, $taxonomy, false);
         if (is_wp_error($result)) {
-            wc_get_logger()->error("Failed to set object terms for post {$post_id} on concessionario" . wc_print_r($result, true), $logger_array);
+            wc_get_logger()->error("Failed to set object terms for post {$post_id} on concessionario" . wc_print_r($result, true));
         }
     }
 }
@@ -341,7 +342,6 @@ function rc_insert_taxonomies_with_slugs($post_id, $slugs, $taxonomy)
 function rc_delete_all_concessionari()
 {
     $post_type = 'concessionario';
-    $logger_array = array('source' => 'delete_all_posts');
 
     // Ottieni tutti i post di un determinato tipo
     $args = array(
@@ -361,11 +361,11 @@ function rc_delete_all_concessionari()
             wp_delete_post($post_id, true); // Imposta il secondo parametro su true per bypassare il cestino
 
             // Aggiungi un log per ogni post eliminato
-            wc_get_logger()->info("Post ID $post_id deleted", $logger_array);
+            wc_get_logger()->info("Post ID $post_id deleted");
         }
         wp_reset_postdata();
     } else {
-        wc_get_logger()->info("No posts found for post type: $post_type", $logger_array);
+        wc_get_logger()->info("No posts found for post type: $post_type");
     }
 }
 

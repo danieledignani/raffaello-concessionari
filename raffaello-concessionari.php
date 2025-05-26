@@ -33,7 +33,6 @@ class ConcessionariPlugin {
 
     private function include_files() {
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/rest-api.php';
-        include_once CONCESSIONARI_PLUGIN_DIR . 'includes/logger.php';
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/province-handler.php';
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/archive-filter.php';
     }

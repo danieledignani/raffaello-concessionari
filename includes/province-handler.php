@@ -20,7 +20,7 @@ function rc_create_province() {
             $term = wp_insert_term($regione_name, 'concessionario_provincia', ['slug' => $regione_slug]);
 
             if (is_wp_error($term)) {
-                wc_get_logger()->error("Errore nella creazione della regione $regione_name: " . $term->get_error_message(), $logger_array);
+                wc_get_logger()->error("Errore nella creazione della regione $regione_name: " . $term->get_error_message());
             } else {
                 $regione_id = $term['term_id']; // Memorizza l'ID del termine appena creato
             }
@@ -36,28 +36,27 @@ function rc_create_province() {
         );
 
             if (is_wp_error($term)) {
-                wc_get_logger()->error("Errore nella creazione della provincia $provincia_name: " . $term->get_error_message(), $logger_array);
+                wc_get_logger()->error("Errore nella creazione della provincia $provincia_name: " . $term->get_error_message());
             }
         }
     }
 }
 
 function rc_get_province_obj(){
-    $logger_array = array('source' => 'concessionari_classi_sconto_creation');
-    wc_get_logger()->info('Start creating provinces', $logger_array);
+    wc_get_logger()->info('Start creating provinces');
 
     // URL del CSV con l'elenco delle province italiane corretto
     // recuperaa dalle opzioni di wordpress
     $csv_url = get_option('options_csv_province');
     if (empty($csv_url)) { //notifica su utente wordpress su admin se l'url è vuoto
         wc_add_notice(__('URL CSV province non trovato nelle opzioni di WordPress', 'raffaello-concessionari'), 'error');
-        wc_get_logger()->error('URL CSV province non trovato nelle opzioni di WordPress', $logger_array);
+        wc_get_logger()->error('URL CSV province non trovato nelle opzioni di WordPress');
         return;
     }
     $response = wp_remote_get($csv_url);
 
     if (is_wp_error($response)) {
-        wc_get_logger()->error('Errore nel recupero delle province: ' . $response->get_error_message(), $logger_array);
+        wc_get_logger()->error('Errore nel recupero delle province: ' . $response->get_error_message());
         return;
     }
     $body = wp_remote_retrieve_body($response);
@@ -100,8 +99,7 @@ function rc_get_slug_value($string, $without_dash = false) {
 }
 
 function rc_delete_all_terms($taxonomy) {
-    $logger_array = array('source' => 'concessionari_terms_deletion');
-    wc_get_logger()->info('Start deleting all classe sconto terms', $logger_array);
+    wc_get_logger()->info('Start deleting all classe sconto terms');
 
     $terms = get_terms([
         'taxonomy' => $taxonomy,
@@ -111,9 +109,9 @@ function rc_delete_all_terms($taxonomy) {
     foreach ($terms as $term) {
         $result = wp_delete_term($term->term_id, $taxonomy);
         if (is_wp_error($result)) {
-            wc_get_logger()->error('Errore nella cancellazione del termine: ' . $result->get_error_message(), $logger_array);
+            wc_get_logger()->error('Errore nella cancellazione del termine: ' . $result->get_error_message());
         } else {
-            wc_get_logger()->info('Termine cancellato: ' . $term->term_id, $logger_array);
+            wc_get_logger()->info('Termine cancellato: ' . $term->term_id);
         }
     }
 }
