@@ -59,7 +59,9 @@ function rc_upsert_single_concessionario_callback($request) {
 }
 
 function rc_delete_single_concessionario_callback($request) {
+
     $id = $request->get_param('id');
+    wc_get_logger()->info("Richiesta eliminazione per portaleconcessionari_id = $id");
 
     $existing = get_posts([
         'post_type' => 'concessionario',
@@ -72,14 +74,21 @@ function rc_delete_single_concessionario_callback($request) {
     ]);
 
     if (!$existing) {
+        wc_get_logger()->warning("Concessionario non trovato con ID = $id");
         return new WP_REST_Response(['errore' => 'Concessionario non trovato'], 404);
     }
 
-    $post_id = $existing[0]->ID;
+    $post = $existing[0];
+    $post_id = $post->ID;
+    $post_title = get_the_title($post_id);
+
+    wc_get_logger()->info("Eliminazione in corso per: [ID: $post_id, Titolo: \"$post_title\"]");
 
     // Rimuove tassonomie
     wp_set_object_terms($post_id, [], 'concessionario_scuola');
     wp_set_object_terms($post_id, [], 'concessionario_provincia');
+
+    wc_get_logger()->info("Tassonomie rimosse per il post ID: $post_id");
 
     // Rimuove campi ACF noti
     $acf_fields = [
@@ -88,18 +97,24 @@ function rc_delete_single_concessionario_callback($request) {
     ];
     foreach ($acf_fields as $field) {
         delete_field($field, $post_id);
+        wc_get_logger()->info("Campo ACF '$field' eliminato da post ID: $post_id");
     }
 
     $result = wp_delete_post($post_id, true);
 
     if (!$result) {
+        wc_get_logger()->error("Errore durante l'eliminazione del post ID: $post_id");
         return new WP_REST_Response(['errore' => 'Errore durante l\'eliminazione'], 500);
     }
+
+    wc_get_logger()->info("Concessionario eliminato con successo: [ID: $post_id, Titolo: \"$post_title\"]");
 
     return new WP_REST_Response(['messaggio' => "Concessionario eliminato", 'post_id' => $post_id], 200);
 }
 
 function rc_upsert_concessionario(array $concessionario): ?int {
+    wc_get_logger()->info("Upsert:" . wc_print_r($concessionario, true));
+
     $province_obj = rc_get_province_obj();
 
     if (empty($concessionario['portaleconcessionari_id'])) return null;
