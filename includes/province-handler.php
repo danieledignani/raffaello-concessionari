@@ -99,6 +99,7 @@ function rc_get_slug_value($string, $without_dash = false) {
     $string = strtolower($string); // Converti la stringa in minuscolo
     //replace ' with empty string
     $string = str_replace("'", '', $string);
+    $string = str_replace("ì", 'i', $string);
     if($without_dash) {
         $string = trim(preg_replace('/[^a-z0-9]+/i', '', $string));
     } else {
