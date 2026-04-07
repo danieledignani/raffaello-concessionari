@@ -35,6 +35,9 @@ class ConcessionariPlugin {
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/rest-api.php';
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/province-handler.php';
         include_once CONCESSIONARI_PLUGIN_DIR . 'includes/archive-filter.php';
+        if (is_admin()) {
+            include_once CONCESSIONARI_PLUGIN_DIR . 'includes/admin.php';
+        }
     }
 
     private function init_hooks() {
